@@ -1,0 +1,173 @@
+#! /usr/bin/env node
+
+/**
+ * Command line version.
+ */
+
+// Dependencies
+const command = require('commander');
+const chalk = require('chalk');
+const clui = require('clui');
+const _ = require('lodash');
+const Progress = require('progress');
+const CatalogIt = require('../lib/catalog-it.js');
+const pkg = require('../package.json');
+
+// Setup command line
+command.version(pkg.version);
+
+// Top level options
+command
+  .option('-c, --catalog <catalog>', 'The domain where the data catalog is location, for instance: "nycopendata.socrata.com"')
+  .option('-b, --bucket <bucket>', 'S3 bucket')
+
+  .option('-p, --profile [profile]', 'Name of the profile in .aws/credentials to use.  Overrides key options')
+  .option('--access-key-id [key]', 'AWS access key to use.  It is suggest to use the AWS_ACCESS_KEY_ID instead')
+  .option('--secret-access-key [key]', 'AWS secret key to use.  It is suggest to use the AWS_SECRET_ACCESS_KEY instead')
+
+  .option('-a, --acl [acl]', 'ACL of items, defaults to "private"; should be "private", "public-read", "public-read-write", or "authenticated-read"', /^(private|public-read|public-read-write|authenticated-read)$/i, 'private')
+  .option('-C, --concurrency [int]', 'Concurrency of fetching datasets and uploading to S3, defaults to 5', parseInt, 5)
+  .option('-f, --format [format]', 'Format of data download, defaults to "csv"; should be "csv" or "json"', /^(csv|json)$/i, 'csv')
+  .option('-r, --prefix [path]', 'The path prefix for S3 items; for example: "backups/catalogs"')
+  .option('-t, --timeout [milleseconds]', 'Timeout for uploads and downloads in milliseconds, defaults to 20000 (Socrata can be slow)', parseInt, 20000)
+  .option('-P, --path [path]', 'Path to directory where cache will live, defauls to "HOME/.catalog-it"');
+
+// Catalog command
+command
+  .command('update-catalog').alias('u')
+  .description('Fetch the list of datasets.')
+  .action(function(env) {
+    var catalogIt = makeCatalogIt(env.parent, env);
+    var spinner = new clui.Spinner('Getting catalog of datasets from ' + catalogIt.options.catalog + '.  This could take a few minutes.');
+    spinner.start();
+
+    catalogIt.updateCatalog(function(error, catalog) {
+      spinner.stop();
+
+      if (error) {
+        console.error(chalk.red(error));
+        process.exit(1);
+      }
+      else {
+        console.log('Found ' + chalk.bold(_.size(catalog.items) + ' items') + '.');
+        process.exit(0);
+      }
+    });
+  });
+
+// See what has changed
+command
+  .command('changed').alias('c')
+  .description('Look at each dataset to see what has changed.')
+  .action(function(env) {
+    var catalogIt = makeCatalogIt(env.parent, env);
+    var spinner = new clui.Spinner('Looking at each dataset in ' + catalogIt.options.catalog + '.  This could take a few minutes.');
+    spinner.start();
+
+    catalogIt.scanHeaders(function(error, results) {
+      spinner.stop();
+
+      if (error) {
+        //console.error(chalk.red(error));
+        //process.exit(1);
+      }
+
+      console.log('Updated information about ' + chalk.bold(results.updated + ' items') + '.');
+      if (results.errors) {
+        console.log('Due to (probably network) errors, ' + chalk.red.bold(results.errors + ' items') + ' were not updated.');
+      }
+      process.exit(0);
+    });
+  });
+
+// Update data
+command
+  .command('data').alias('d')
+  .description('Archive data that has changed.')
+  .action(function(env) {
+    var catalogIt = makeCatalogIt(env.parent, env);
+    var max = _.filter(catalogIt.catalog.items, 'update').length;
+    var progress = new Progress('  Archiving [:bar] :percent (:current of :total) | :etas', {
+      complete: chalk.cyan('='),
+      incomplete: chalk.grey('-'),
+      total: max,
+      width: 40,
+      stream: process.stdout
+    });
+
+    // Make sure there are some to update
+    if (!max) {
+      console.log('Nothing to archive.');
+      process.exit(0);
+    }
+
+    // Update spinner info
+    progress.render();
+    var i = setInterval(function() {
+      var inc = max - _.filter(catalogIt.catalog.items, 'update').length - progress.curr;
+      if (inc > 0) {
+        progress.tick(inc);
+      }
+      else {
+        progress.render();
+      }
+    }, 1000);
+
+    // Scan data
+    catalogIt.scanData(function(error, results) {
+      clearInterval(i);
+      progress.terminate();
+
+      if (error) {
+        //console.error(chalk.red(error));
+        //process.exit(1);
+      }
+
+      console.log('Archived ' + chalk.bold(results.updated + ' items') + '.');
+      if (results.errors) {
+        console.log('Due to (probably network) errors, ' + chalk.red.bold(results.errors + ' items') + ' were not archived.');
+      }
+      process.exit(0);
+    });
+  });
+
+
+// Parse
+command.parse(process.argv);
+
+// Get catalog object given options
+function makeCatalogIt(command, subCommand) {
+  var options = {
+    catalog: command.catalog,
+    bucket: command.bucket,
+    acl: command.acl,
+    concurrency: command.concurrency,
+    format: command.format,
+    prefix: command.prefix,
+    timeout: command.timeout,
+    path: command.path,
+    profile: command.profile,
+    accessKeyId: command.profile ? undefined : command['access-key-id'],
+    secretAccessKey: command.profile ? undefined : command['secret-access-key']
+  };
+
+  // TODO: Handle environment variables
+
+  // Check that we have the requirements
+  if (!options.catalog) {
+    console.error(chalk.red('Catalog argument is required.'));
+    process.exit(1);
+  }
+  if (!options.bucket) {
+    console.error(chalk.red('Bucket argument is required.'));
+    process.exit(1);
+  }
+
+  // Check profile
+  if (!options.profile && !(options.accessKeyId && options.secretAccessKey)) {
+    console.error(chalk.red('Profile or credentials not provided.'));
+    process.exit(1);
+  }
+
+  return new CatalogIt(options);
+}
