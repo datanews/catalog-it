@@ -26,15 +26,15 @@ command
   .option('--secret-access-key [key]', 'AWS secret key to use.  It is suggest to use the AWS_SECRET_ACCESS_KEY instead')
 
   .option('-a, --acl [acl]', 'ACL of items, defaults to "private"; should be "private", "public-read", "public-read-write", or "authenticated-read"', /^(private|public-read|public-read-write|authenticated-read)$/i, 'private')
-  .option('-C, --concurrency [int]', 'Concurrency of fetching datasets and uploading to S3, defaults to 5', parseInt, 5)
+  .option('-C, --concurrency [int]', 'Concurrency of fetching datasets and uploading to S3, defaults to 5', undefined, 5)
   .option('-f, --format [format]', 'Format of data download, defaults to "csv"; should be "csv" or "json"', /^(csv|json)$/i, 'csv')
   .option('-r, --prefix [path]', 'The path prefix for S3 items; for example: "backups/catalogs"')
-  .option('-t, --timeout [milleseconds]', 'Timeout for uploads and downloads in milliseconds, defaults to 20000 (Socrata can be slow)', parseInt, 20000)
+  .option('-t, --timeout [milleseconds]', 'Timeout for uploads and downloads in milliseconds, defaults to 999000 (Socrata can be slow)', undefined, 999000)
   .option('-P, --path [path]', 'Path to directory where cache will live, defauls to "HOME/.catalog-it"');
 
 // Catalog command
 command
-  .command('update-catalog').alias('u')
+  .command('update').alias('u')
   .description('Fetch the list of datasets.')
   .action(function(env) {
     var catalogIt = makeCatalogIt(env.parent, env);
@@ -131,6 +131,46 @@ command
     });
   });
 
+// Update data
+command
+  .command('one <id>').alias('o')
+  .description('Get one dataset; more useful for testing.')
+  .action(function(id) {
+    var catalogIt = makeCatalogIt(this.parent, this);
+
+    // Check for ID
+    if (!catalogIt.catalog.items[id]) {
+      console.error(chalk.red('Unable to find "' + id + '" in the catalog; try the "update" command to ensure it is known.'));
+      process.exit(1);
+    }
+
+    // Spin
+    var spinner = new clui.Spinner('Fetching headers and data for "' + id + '".  This could take a few minutes.');
+    spinner.start();
+
+    // Fetch headers and then data
+    catalogIt.fetchHeaders(id, function(error, results) {
+      if (error) {
+        console.error(chalk.red('Unable to get headers, try the "update" command to ensure it is known.'));
+        console.error(chalk.red(error));
+        spinner.stop();
+        process.exit(1);
+      }
+
+      catalogIt.fetchData(id, function(error, results) {
+        spinner.stop();
+
+        if (error) {
+          console.error(chalk.red('Download failed.'));
+          console.error(chalk.red(error));
+          process.exit(1);
+        }
+
+        console.log('Complete.');
+      });
+    });
+  });
+
 
 // Parse
 command.parse(process.argv);
@@ -141,10 +181,10 @@ function makeCatalogIt(command, subCommand) {
     catalog: command.catalog,
     bucket: command.bucket,
     acl: command.acl,
-    concurrency: command.concurrency,
+    concurrency: _.isNaN(parseInt(command.concurrency, 10)) ? undefined : parseInt(command.concurrency, 10),
     format: command.format,
     prefix: command.prefix,
-    timeout: command.timeout,
+    timeout: _.isNaN(parseInt(command.timeout, 10)) ? undefined : parseInt(command.timeout, 10),
     path: command.path,
     profile: command.profile,
     accessKeyId: command.profile ? undefined : command['access-key-id'],

@@ -27,6 +27,7 @@
     "debug": "^2.3.2",
     "dev-null": "^0.1.1",
     "dotenv": "^2.0.0",
+    "filesize": "^3.3.0",
     "lodash": "^4.17.2",
     "mkdirp": "^0.5.1",
     "moment-timezone": "^0.5.9",
