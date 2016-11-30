@@ -201,18 +201,18 @@ function makeCatalogIt(command, subCommand) {
   });
 
   // Check that we have the requirements
-  if (!options.catalog && !process.env.CATALOG && !process.env.CATALOG_IT_CATALOG) {
+  if (!options.catalog && !process.env.CATALOG_IT_CATALOG) {
     console.error(chalk.red('Catalog argument is required.'));
     process.exit(1);
   }
-  if (!options.bucket && !process.env.BUCKET && !process.env.CATALOG_IT_BUCKET) {
+  if (!options.bucket && !process.env.CATALOG_IT_BUCKET) {
     console.error(chalk.red('Bucket argument is required.'));
     process.exit(1);
   }
 
   // Check profile
   if (!options.profile && !(options.accessKeyId && options.secretAccessKey) &&
-    !process.env.PROFILE && !(process.env.ACCESS_KEY_ID && process.env.SECRET_ACCESS_KEY) &&
+    !process.env.CATALOG_IT_PROFILE &&
     !(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)) {
     console.error(chalk.red('Profile or credentials not provided.'));
     process.exit(1);
