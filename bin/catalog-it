@@ -31,7 +31,8 @@ command
   .option('-r, --prefix [path]', 'The path prefix for S3 items; for example: "backups/catalogs"')
   .option('-t, --timeout [milleseconds]', 'Timeout for uploads and downloads in milliseconds, defaults to 999000 (Socrata can be slow)', undefined, 999000)
   .option('-P, --path [path]', 'Path to directory where cache will live, defauls to "HOME/.catalog-it"')
-  .option('-n, --no-bucket-create', 'By default, catalog-it attempts to create the bucket on start; this will stop that from happening.');
+  .option('-n, --no-bucket-create', 'By default, catalog-it attempts to create the bucket on start; this will stop that from happening.')
+  .option('-o, --config [path]', 'Path to environment variable file as defined by the "dotenv" module.');
 
 // Catalog command
 command
@@ -193,20 +194,26 @@ function makeCatalogIt(command, subCommand) {
     noBucketCreate: !!command['no-bucket-create']
   };
 
-  // TODO: Handle environment variables
+  // Get environment variables
+  require('dotenv').config({
+    silent: true,
+    path: command.config ? command.config : undefined
+  });
 
   // Check that we have the requirements
-  if (!options.catalog) {
+  if (!options.catalog && !process.env.CATALOG && !process.env.CATALOG_IT_CATALOG) {
     console.error(chalk.red('Catalog argument is required.'));
     process.exit(1);
   }
-  if (!options.bucket) {
+  if (!options.bucket && !process.env.BUCKET && !process.env.CATALOG_IT_BUCKET) {
     console.error(chalk.red('Bucket argument is required.'));
     process.exit(1);
   }
 
   // Check profile
-  if (!options.profile && !(options.accessKeyId && options.secretAccessKey)) {
+  if (!options.profile && !(options.accessKeyId && options.secretAccessKey) &&
+    !process.env.PROFILE && !(process.env.ACCESS_KEY_ID && process.env.SECRET_ACCESS_KEY) &&
+    !(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)) {
     console.error(chalk.red('Profile or credentials not provided.'));
     process.exit(1);
   }
