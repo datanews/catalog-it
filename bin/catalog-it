@@ -30,7 +30,8 @@ command
   .option('-f, --format [format]', 'Format of data download, defaults to "csv"; should be "csv" or "json"', /^(csv|json)$/i, 'csv')
   .option('-r, --prefix [path]', 'The path prefix for S3 items; for example: "backups/catalogs"')
   .option('-t, --timeout [milleseconds]', 'Timeout for uploads and downloads in milliseconds, defaults to 999000 (Socrata can be slow)', undefined, 999000)
-  .option('-P, --path [path]', 'Path to directory where cache will live, defauls to "HOME/.catalog-it"');
+  .option('-P, --path [path]', 'Path to directory where cache will live, defauls to "HOME/.catalog-it"')
+  .option('-n, --no-bucket-create', 'By default, catalog-it attempts to create the bucket on start; this will stop that from happening.');
 
 // Catalog command
 command
@@ -188,7 +189,8 @@ function makeCatalogIt(command, subCommand) {
     path: command.path,
     profile: command.profile,
     accessKeyId: command.profile ? undefined : command['access-key-id'],
-    secretAccessKey: command.profile ? undefined : command['secret-access-key']
+    secretAccessKey: command.profile ? undefined : command['secret-access-key'],
+    noBucketCreate: !!command['no-bucket-create']
   };
 
   // TODO: Handle environment variables
