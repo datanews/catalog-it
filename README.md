@@ -2,11 +2,9 @@
 
 Tool to download all data from a Socrata data portal and keep revisions on S3.
 
-## Install
+## Command line
 
-`npm install catalog-it -g`
-
-## Use
+Install: `npm install catalog-it -g`
 
 Use `catalog-it --help` to show this help page.
 
@@ -42,7 +40,9 @@ Use `catalog-it --help` to show this help page.
 
 The command line will also look for environment variables and use those if they are not provided by the command line.  Each environment variable should be prefixed with `CATALOG_IT_`.  The command line will also try to read in an `.env` file if it exists, or the file provided by the `--config` option.
 
-### Module
+## Module
+
+Install: `npm install catalog-it --save`
 
 Catalog It can also be used as a JS module.  Simply include and use the same options as the command line except that the option properties are camelcase and the `config` option is not used.
 
@@ -56,6 +56,13 @@ let c = new CatalogIt({
 ```
 
 The module also supports using environment variables but will not read in any file.
+
+### Properties and methods
+
+* `catalog`: Current catalog in memory.
+* `updateCatalog(function(error, catalog) { ... })`: Gets new catalog and updates existing.
+* `scanHeaders(function(errors, updates) { ... })`: Gets info from headers to determine what needs changing.  This function will skip network errors.
+* `scanData(function(errors, updates) { ... })`: Gets new data and archives to S3.  This function will skip network errors.
 
 ## Scheduling
 
