@@ -1,6 +1,8 @@
 # Catalog It
 
-Tool to download all data from a Socrata data portal and keep revisions on S3.
+Tool to download all datasets from a Socrata data portal and keep revisions on S3.
+
+Specifically, Catalog It maintains a list of all "datasets" (this is a specific type on Socrata), looks for the last modified date from the dataset headers, and then uploads a copy of that data if it has changed.
 
 ## Command line
 
