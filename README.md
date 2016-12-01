@@ -32,10 +32,13 @@ Use `catalog-it --help` to show this help page.
     -C, --concurrency [int]       Concurrency of fetching datasets and uploading to S3, defaults to 5
     -f, --format [format]         Format of data download, defaults to "csv"; should be "csv" or "json"
     -r, --prefix [path]           The path prefix for S3 items; for example: "backups/catalogs"
-    -t, --timeout [milleseconds]  Timeout for uploads and downloads in milliseconds, defaults to 999000 (Socrata can be slow)
+    -t, --timeout [milleseconds]  Timeout for uploads and downloads in milliseconds, defaults to 100000 (Socrata can be slow)
     -P, --path [path]             Path to directory where cache will live, defauls to "HOME/.catalog-it"
     -o, --config [path]           Path to environment variable file as defined by the "dotenv" module.
-    --no-bucket-create        By default, catalog-it attempts to create the bucket on start; this will stop that from happening.
+    --compress                    Compress with gzip when uploading to S3 (saves space); this is the default;
+    --no-compress                 Do not compress with gzip when uploading to S3 (saves space).
+    --bucket-create               Attempt to create the bucket on start; this is the default.
+    --no-bucket-create            Do not attempt to create the bucket on start.
 ```
 
 The command line will also look for environment variables and use those if they are not provided by the command line.  Each environment variable should be prefixed with `CATALOG_IT_`.  The command line will also try to read in an `.env` file if it exists, or the file provided by the `--config` option.
